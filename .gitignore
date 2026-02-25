@@ -2,7 +2,6 @@
 .venv/
 venv/
 venv_wsl/
-.vscode/
 
 # Python cache
 __pycache__/
