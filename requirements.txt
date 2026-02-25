@@ -1,0 +1,25 @@
+# Core API
+fastapi==0.111.0
+uvicorn==0.29.0
+
+# CrewAI & LLM
+crewai==0.130.0
+langchain-core==0.1.52
+
+# PDF Handling
+langchain-community==0.0.38
+pypdf==4.2.0
+
+# Data Handling
+pandas==2.2.2
+numpy==1.26.4
+
+# Celery & Redis (Bonus Feature)
+celery==5.3.6
+redis==5.0.4
+
+# Environment
+python-dotenv==1.0.1
+
+# Optional but safe
+click==8.1.7
