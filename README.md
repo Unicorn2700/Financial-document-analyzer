@@ -1,5 +1,4 @@
 # Financial Document Analyzer  
-**AI Internship Debug Challenge Submission**
 
 ---
 
