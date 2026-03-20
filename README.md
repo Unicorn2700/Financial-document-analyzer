@@ -1,247 +1,143 @@
-# Financial Document Analyzer  
 
----
+# Financial Document Analyzer
 
-## 1. Project Overview
+Financial Document Analyzer is an AI-powered system for processing financial PDF reports and generating structured financial insights using multi-agent reasoning.
 
-This project implements an AI-powered financial document analysis system capable of processing financial PDF reports and generating structured insights.
+This project was built to explore how modern LLM orchestration frameworks can be combined with scalable backend systems to analyze complex financial documents efficiently.
 
 The system integrates:
 
-- FastAPI – REST API framework  
-- CrewAI – Multi-agent orchestration  
-- Ollama (Local LLM) – AI inference engine  
-- Celery + Redis – Asynchronous task queue (Bonus Feature)
+- FastAPI — REST API framework  
+- CrewAI — Multi-agent orchestration  
+- Ollama — Local LLM inference  
+- Celery + Redis — Asynchronous background task execution  
 
-The original codebase contained structural, dependency, and architectural issues.  
-This submission includes a fully debugged, stabilized, and production-ready version.
-
----
-
-## 2. System Architecture
-
-The system is intentionally designed with separation of concerns:
-
-### 2.1 Asynchronous Background Processing (`/analyze`)
-Implements scalable task execution using Celery and Redis.
-
-**Flow:**
-
-Client → FastAPI → Redis (Broker) → Celery Worker → Redis (Result Backend) → Client Polling
-
-Purpose:
-- Prevent API blocking
-- Support concurrent document submissions
-- Demonstrate queue worker architecture (Bonus Requirement)
+It combines production-style backend architecture with AI agent collaboration for financial report analysis.
 
 ---
 
-### 2.2 Multi-Agent AI Analysis (`/analyze-ai`)
-Executes full CrewAI multi-agent pipeline synchronously.
+## System Architecture
 
-Agents involved:
-- Financial Document Verifier
-- Financial Analyst
-- Risk Assessor
-- Investment Advisor
+The application is designed with clear separation between asynchronous task execution and AI reasoning.
 
-Flow:
-Client → FastAPI → CrewAI → Ollama → Structured Financial Report
+### Asynchronous Background Processing (`/analyze`)
 
-Purpose:
-- Provide deep financial reasoning
-- Generate structured investment recommendations
-- Demonstrate AI orchestration capability
+Implements non-blocking document submission using Celery and Redis.
 
----
+**Flow:**  
+Client → FastAPI → Redis Broker → Celery Worker → Redis Result Backend → Client Polling
 
-## 3. Bugs Identified and Fixed
+**Purpose:**
 
-The original codebase had multiple issues. They are categorized below.
+- Prevent API blocking during document uploads  
+- Support concurrent task execution  
+- Simulate queue-based scalable backend architecture  
 
 ---
 
-### 3.1 Core Code Issues
+### Multi-Agent Financial Analysis (`/analyze-ai`)
 
-#### 3.1.1 Incorrect CrewAI Import
-Original:
-```python
-from crewai.agents import Agent
-```
+Runs a full CrewAI pipeline for structured financial reasoning.
 
-Corrected to:
+**Agents involved:**
+
+- Financial Document Verifier  
+- Financial Analyst  
+- Risk Assessor  
+- Investment Advisor  
+
+**Flow:**  
+Client → FastAPI → CrewAI → Ollama → Structured Financial Report  
+
+**Purpose:**
+
+- Extract key financial insights  
+- Generate risk assessment  
+- Provide investment-oriented observations  
+- Explore collaborative multi-agent reasoning with local LLMs  
+
+---
+
+## Implementation Highlights
+
+### CrewAI Integration
+
+Configured CrewAI agents using proper initialization patterns and modular task definitions.
+
 ```python
 from crewai import Agent
-```
+````
 
----
+### Structured Agent Prompt Design
 
-#### 3.1.2 Invalid Tool Import
-`search_tool` was imported but not defined in `tools.py`.
+Designed prompts to improve output reliability by enforcing:
 
-Fix:
-- Removed invalid import
-- Aligned tool definitions with actual implementation
+* Document-grounded reasoning
+* Structured financial summaries
+* Controlled recommendation style
 
----
+### FastAPI Service Layer
 
-#### 3.1.3 Unreliable Agent Prompts
-Original agents:
-- Fabricated financial advice
-- Approved all documents without validation
-- Used exaggerated investment language
+Built FastAPI endpoints for both queued processing and synchronous AI analysis.
 
-Fix:
-- Enforced document-based reasoning
-- Structured output format
-- Removed hallucination-prone instructions
-
----
-
-#### 3.1.4 Missing Crew Initialization
-`financial_crew` was referenced before proper initialization.
-
-Fix:
-- Defined global Crew instance in `main.py`
-
----
-
-#### 3.1.5 Missing FastAPI `app` Instance
-Error:
-```
-Error loading ASGI app. Attribute "app" not found
-```
-
-Fix:
 ```python
 app = FastAPI()
 ```
-Defined at module level.
 
----
+### LLM Context Optimization
 
-#### 3.1.6 Nested Folder Structure
-Duplicate folder naming caused:
-```
-ModuleNotFoundError: No module named 'main'
-```
+To maintain stable inference speed, document input is truncated before sending to the model.
 
-Fix:
-- Flattened directory structure
-- Corrected import paths
-
----
-
-#### 3.1.7 Large LLM Context Causing Freezing
-Entire PDF passed to LLM caused:
-- Extremely slow execution
-- Blocking behavior
-- Timeouts
-
-Fix:
 ```python
 document_text = document_text[:4000]
 ```
 
----
+This prevents long-context slowdowns during local inference.
 
-### 3.2 Dependency Conflicts
+### Queue Routing with Celery
 
-#### 3.2.1 Pydantic Version Conflict
-FastAPI and CrewAI required different versions.
+Configured dedicated task routing for background financial analysis jobs.
 
-Fix:
-- Removed manual version pinning
-- Upgraded FastAPI to version compatible with Pydantic v2
-- Allowed dependency resolver to manage versions
-
----
-
-#### 3.2.2 OpenAI Version Conflict
-Manual OpenAI version conflicted with CrewAI's internal dependency chain.
-
-Fix:
-- Removed manual OpenAI version specification
-- Allowed CrewAI dependencies to resolve automatically
-
----
-
-### 3.3 Celery & Redis Issues (Bonus Feature)
-
-#### 3.3.1 Celery Task Import Error
-```
-ModuleNotFoundError: No module named 'main'
-```
-
-Fix:
-- Corrected project structure
-- Adjusted task import paths
-
----
-
-#### 3.3.2 Queue Routing Issue
-Tasks were not being consumed.
-
-Fix:
 ```python
 celery_app.conf.task_routes = {
     "celery_worker.run_analysis": {"queue": "financial_queue"}
 }
 ```
 
----
+### Redis-Based Task Orchestration
 
-#### 3.3.3 Redis Not Running
-Docker daemon not started.
+Redis is used as:
 
-Fix:
-```bash
-docker run -d -p 6379:6379 --name redis-server redis
-```
+* Message broker
+* Result backend
 
----
-
-#### 3.3.4 CrewAI Blocking Inside Celery Worker
-LLM execution inside multiprocessing worker caused indefinite hanging (Windows environment).
-
-Solution:
-- Separated AI execution from queue worker
-- `/analyze` handles background tasks
-- `/analyze-ai` handles synchronous AI reasoning
-
-This ensures stability while still demonstrating queue architecture.
+This enables asynchronous task execution and polling-based result retrieval.
 
 ---
 
-## 4. Setup Instructions
+## Setup Instructions
 
-### 4.1 Clone Repository
+### Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Unicorn2700/Financial-document-analyzer
 cd financial-document-analyzer
 ```
 
----
-
-### 4.2 Create Virtual Environment
+### Create Virtual Environment
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
----
-
-### 4.3 Install Dependencies
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-### 4.4 Start Redis (Docker)
+### Start Redis (Docker)
 
 ```bash
 docker run -d -p 6379:6379 --name redis-server redis
@@ -253,53 +149,51 @@ If container already exists:
 docker start redis-server
 ```
 
----
-
-### 4.5 Start Celery Worker
+### Start Celery Worker
 
 ```bash
 celery -A celery_worker.celery_app worker --loglevel=info --pool=solo -Q financial_queue
 ```
 
 Wait until:
-```
+
+```bash
 ready.
 ```
 
----
-
-### 4.6 Launch FastAPI Server
+### Launch FastAPI Server
 
 ```bash
 uvicorn main:app --reload
 ```
 
 Server runs at:
-```
+
+```bash
 http://127.0.0.1:8000
 ```
 
 ---
 
-## 5. API Documentation
+## API Documentation
 
-Interactive documentation available at:
+Interactive API docs available at:
 
-```
+```bash
 http://127.0.0.1:8000/docs
 ```
 
----
+### POST `/analyze`
 
-### 5.1 POST `/analyze`
+Submit document for background processing.
 
-Submits document for background processing.
+**Request:**
 
-Request:
-- `query` (string)
-- `file` (PDF)
+* `query` (string)
+* `file` (PDF)
 
-Response:
+**Response:**
+
 ```json
 {
   "status": "queued",
@@ -307,13 +201,12 @@ Response:
 }
 ```
 
----
+### GET `/result/{task_id}`
 
-### 5.2 GET `/result/{task_id}`
+Retrieve background task result.
 
-Retrieves result of background task.
+**Response:**
 
-Response:
 ```json
 {
   "status": "SUCCESS",
@@ -321,29 +214,38 @@ Response:
 }
 ```
 
----
+### POST `/analyze-ai`
 
-### 5.3 POST `/analyze-ai`
+Run full multi-agent financial analysis.
 
-Executes full multi-agent financial analysis.
+**Output includes:**
 
-Response:
-- Executive Summary
-- Key Financial Metrics
-- Risk Assessment
-- Investment Outlook
-
----
-
-## 6. Design Decisions
-
-- Separated AI inference from queue execution to avoid worker deadlocks
-- Implemented character limit safeguard for LLM stability
-- Removed unnecessary dependency pinning
-- Modularized infrastructure and AI components
-- Ensured reproducible setup via requirements.txt and Docker Redis
-
+* Executive Summary
+* Key Financial Metrics
+* Risk Assessment
+* Investment Outlook
 
 ---
 
-**Submission Complete**
+## Design Decisions
+
+* Separated AI inference from queue execution for stability
+* Added input-size safeguards for local LLM responsiveness
+* Modularized backend and AI layers independently
+* Used Redis + Celery to simulate scalable task architecture
+* Designed the project to explore production-style AI service patterns
+
+---
+
+## Tech Stack
+
+* FastAPI
+* CrewAI
+* Ollama
+* Celery
+* Redis
+* Docker
+* Python
+
+```
+```
